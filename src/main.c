@@ -1,6 +1,4 @@
 #include <stdio.h>
-#include <string.h>
-
 #include "des.h"
 
 int main(const int argc, char *argv[]) {
@@ -13,7 +11,10 @@ int main(const int argc, char *argv[]) {
     char *plaintext = argv[1];
     //char *key = argv[2];
 
+    uint64_t text64b = TextTo64Bit(plaintext, 8);
     printf("Plaintext is: %s\n", plaintext);
-    printf("Encrypted plaintext is: %lu\n", TextTo64Bit(plaintext, 4));
+    printf("64bit plaintext is:  0x%llx\n", text64b);
+    text64b = InitialPermutation(text64b);
+    printf("Permuted Input: 0x%llx\n", text64b);
     return 0;
 }

@@ -3,13 +3,14 @@
 //
 
 #include "des.h"
+
 #include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
+#include <sys/types.h>
 
 #define DES_KEY_SIZE 56
 #define DES_BLOCK_SIZE 64
 #define MAX_PLAINTEXT_SIZE 8
+#define L64_MASK 0x00000000ffffffff
 
 /* Initial Permutation Table */
 static char IP_TABLE[] = {
@@ -139,21 +140,36 @@ static char iteration_shift[] = {
 };
 
 
+/**
+ * @brief
+ * @param plaintext 64bit plaintext
+ * @return 64 bit permuted input
+ */
+uint64_t InitialPermutation(const uint64_t plaintext) {
+    uint64_t permuted_input = 0x0000000000000000;
+    for (int i = 0; i < DES_BLOCK_SIZE; i++) {
 
-
-//Plaintext must be 64-bit
-//1 char = 1 byte = 8-bit
-//8 char arrays only
-char *InitialPermutation(char *plaintext) {
-
-    return plaintext;
+    }
+    return permuted_input;
 }
 
-
-uint64_t TextTo64Bit(const char *plaintext, const int length) {
+/**
+ * @brief Takes a char array of MAX LENGTH 8 and packs it inside
+ * a 64-bit integer.
+ * @param plaintext char pointer to the first letter in the array
+ * @param length length of the array. length <= 8
+ * @return 64-bit unsigned integer
+ */
+uint64_t TextTo64Bit(const char *plaintext, const int length){
+    if(length > MAX_PLAINTEXT_SIZE) {
+        perror("Can't fit text into 64 bits");
+        return -1;
+    }
     uint64_t b64 = 0x0000000000000000;
-    for(int i = 0; i < length; i++) {
-        b64 |= (uint64_t)plaintext[i] << i * 8;
+    for (int i = 0; i < length; i++) {
+        //printf("Letter %c equals in hex %x\n", plaintext[i], plaintext[i]);
+       // printf("b64: %llx\n", b64);
+        b64 |= (uint64_t)plaintext[i] << (length* ((length - 1) - i));
     }
     return b64;
 }
