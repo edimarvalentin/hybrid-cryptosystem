@@ -9,6 +9,7 @@
 
 #define DES_KEY_SIZE 56
 #define DES_BLOCK_SIZE 64
+#define MAX_PLAINTEXT_SIZE 8
 
 /* Initial Permutation Table */
 static char IP_TABLE[] = {
@@ -149,11 +150,12 @@ char *InitialPermutation(char *plaintext) {
 }
 
 
-uint64_t CharTo64Bit(char *plaintext) {
-    //char is a byte 0 ... FF
-    const uint64_t result = 0; // dummy for now
-    return result;
-
+uint64_t TextTo64Bit(const char *plaintext, const int length) {
+    uint64_t b64 = 0x0000000000000000;
+    for(int i = 0; i < length; i++) {
+        b64 |= (uint64_t)plaintext[i] << i * 8;
+    }
+    return b64;
 }
 
 char *InversePermutation(char *ciphertext) {
