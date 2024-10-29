@@ -16,5 +16,7 @@ int main(const int argc, char *argv[]) {
     printf("64bit plaintext is:  0x%llx\n", text64b);
     text64b = InitialPermutation(text64b);
     printf("Permuted Input: 0x%llx\n", text64b);
+    text64b = InversePermutation(text64b);
+    printf("Inversed:0x%llx\n", text64b);
     return 0;
 }

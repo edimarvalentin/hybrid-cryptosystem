@@ -156,6 +156,21 @@ uint64_t InitialPermutation(const uint64_t plaintext) {
 }
 
 /**
+ *
+ * @param pre_output 64-bit input after DES rounds
+ * @return 64-bit ciphertext
+ */
+uint64_t InversePermutation(const uint64_t pre_output) {
+    uint64_t ciphertext = 0x0000000000000000;
+    for(int i = 0; i < DES_BLOCK_SIZE; i++) {
+        const int bit_pos = INVERSE_IP_TABLE[i];
+        const uint64_t bit = (pre_output >> (bit_pos -1)) & 1; // shift to the bit and get it
+        ciphertext |= bit << i; // place in the permuted input
+    }
+    return ciphertext;
+}
+
+/**
  * @brief Takes a char array of MAX LENGTH 8 and packs it inside
  * a 64-bit integer.
  * @param plaintext char pointer to the first letter in the array
@@ -176,7 +191,4 @@ uint64_t TextTo64Bit(const char *plaintext, const int length){
     return b64;
 }
 
-char *InversePermutation(char *ciphertext) {
-    return ciphertext;
-}
 
