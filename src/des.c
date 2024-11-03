@@ -9,8 +9,10 @@
 
 #define DES_KEY_SIZE        65
 #define DES_BLOCK_SIZE      64
+#define DES_ROUNDS          16
 #define DES_PC1_SIZE        56
 #define DES_PC2_SIZE        48
+#define PERMUTATION_SIZE    32
 #define MAX_PLAINTEXT_SIZE  8
 #define EXPANSION_SIZE      48
 #define S_BOXES             8
@@ -70,7 +72,7 @@ static int P[] = {
 };
 
 /* The S-Box tables */
-static unsigned int S[8][64] = {{
+static uint64_t S[8][64] = {{
     /* S1 */
     14,  4, 13,  1,  2, 15, 11,  8,  3, 10,  6, 12,  5,  9,  0,  7,
      0, 15,  7,  4, 14,  2, 13,  1, 10,  6, 12, 11,  9,  5,  3,  8,
@@ -284,31 +286,93 @@ uint64_t LeftCircularShift(const uint64_t K56, const int round) {
 }
 
 uint64_t SBoxSubstitution(const uint64_t R48) {
-    uint64_t b38 = 0x0000000000000000;
+    uint64_t b32 = 0x0000000000000000;
 
-    for(int s = S_BOXES - 1; s > -1; s--) { // the dreaded reverse for loop
-        uint64_t row = 0x0;
+    // Iterate over each 6-bit segment
+    for (int s = S_BOXES - 1; s >= 0; s--) {
+        // extract the current 6-bit chunk from R48
+        const uint64_t chunk = (R48 >> (s * 6)) & 0x3F;
 
+        // determine the row and column for the S-box lookup
+        const uint64_t row = ((chunk & 0x20) >> 4) | (chunk & 0x01);  // the first and last bits for the row
+        const uint64_t column = (chunk >> 1) & 0x0F; // middle 4 bits for the column
+
+        // lookup the S-box value
+        const uint64_t value = S[s][(row << 4) | column] & 0x0F; // 4-bit output from the S-box
+
+        // Shift the S-box output into the correct position in the 32-bit result
+        b32 |= value << (s * 4);
     }
+
+    return b32;
+}
+
+uint64_t Permutation(const uint64_t R32) {
+    uint64_t b32 = 0x0000000000000000;
+    for (int i = 0; i < PERMUTATION_SIZE; i++) {
+        const int bit_pos = P[i];
+        const uint64_t bit = (R32 >> (bit_pos - 1)) & 1; //shift to the bit and get it
+        b32 |= bit << i; // place in permuted output
+    }
+    return b32;
 }
 
 uint64_t F(const uint64_t R, const uint64_t K){
-    // Step 3: Substitution
-    // Step 4: Permutation
-
     // Step 1: Expansion permutation from 32 bits to 48 bits
     uint64_t b48 = Expansion(R);
 
     // Step 2: bitwise XOR with permuted and shifted Key
     b48 = b48 ^ K;
 
+    // Step 3: Substitution box
+    uint64_t b32 = SBoxSubstitution(b48);
 
+    // Step 4: Permutation
+    b32 = Permutation(b32);
 
-
-
-
-    return 0;
+    return b32;
 }
+
+uint64_t DESEncrypt(const uint64_t plaintext, const uint64_t key) {
+
+    // Initial Permutation
+    const uint64_t permuted_input = InitialPermutation(plaintext);
+
+    //Split in half
+    uint64_t L32 = permuted_input & L64_MASK;
+    uint64_t R32 = permuted_input & R64_MASK;
+
+    //Permuted choice 1
+    uint64_t K56 = PermutedChoice1(key); // This key will be doing circular shifts
+
+    for(int R = 0; R < DES_ROUNDS; R++) {
+
+        //left circular shift
+        K56 = LeftCircularShift(K56, R);
+
+        //Permute and reduce key to 48 bits
+        const uint64_t K48 = PermutedChoice2(K56);
+
+        // Save it for now
+        const uint64_t temp = R32;
+
+        // Function F and bitwise XOR the output with the left
+        R32 = F(R32, K48) ^ L32;
+
+        L32 = (temp << 32) & L64_MASK; // Get the original R32
+
+    }
+
+    // Swap the sides
+    uint64_t temp = L32; // save it for now
+    L32 = (R32 << 32) & L64_MASK;
+    R32 = (temp >> 32) * R64_MASK;
+
+    // the ciphertext
+    return InversePermutation(L32 | R32);
+
+}
+
 
 
 
