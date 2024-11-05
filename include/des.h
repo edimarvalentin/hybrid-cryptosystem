@@ -5,9 +5,6 @@
 #ifndef DES_H
 #define DES_H
 #include <stdint.h>
-uint64_t TextTo64Bit(const char *plaintext, int length);
-uint64_t InitialPermutation(uint64_t plaintext);
-uint64_t InversePermutation(uint64_t pre_output);
-uint64_t Expansion(uint64_t R);
-uint64_t DESEncrypt(const uint64_t plaintext, const uint64_t key);
+uint64_t TextTo64Bit(const char *plaintext);
+uint64_t DESEncrypt(uint64_t plaintext, uint64_t key);
 #endif //DES_H
