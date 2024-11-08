@@ -8,25 +8,25 @@
 #include <string.h>
 #include <sys/types.h>
 
-#define DES_KEY_SIZE        64
-#define DES_BLOCK_SIZE      64
-#define DES_ROUNDS          16
-#define DES_PC1_SIZE        56
-#define DES_PC2_SIZE        48
-#define PERMUTATION_SIZE    32
-#define MAX_PLAINTEXT_SIZE  8
-#define EXPANSION_SIZE      48
-#define S_BOXES             8
-#define L64_MASK            0xffffffff00000000
-#define R64_MASK            0x00000000ffffffff
-#define L56_MASK            0x00fffffff0000000
-#define R56_MASK            0x000000000fffffff
-#define R28_SHIFT1_MASK     0x000000001ffffffe
-#define R28_SHIFT2_MASK     0x000000003ffffffc
-#define L28_LSB1_MASK       0x0000000010000000
-#define R28_LSB1_MASK       0x0000000000000001  // kinda dump but is easier to visualize
-#define L28_LSB2_MASK       0x0000000030000000
-#define R28_LSB2_MASK       0x0000000000000003
+#define DES_KEY_SIZE            64
+#define DES_BLOCK_SIZE          64
+#define DES_ROUNDS              16
+#define DES_PC1_SIZE            56
+#define DES_PC2_SIZE            48
+#define PERMUTATION_SIZE        32
+#define MAX_PLAINTEXT_SIZE      8
+#define EXPANSION_SIZE          48
+#define S_BOXES                 8
+#define L64_MASK                0xffffffff00000000
+#define R64_MASK                0x00000000ffffffff
+#define L56_MASK                0x00fffffff0000000
+#define R56_MASK                0x000000000fffffff
+#define R28_SHIFT_LEFT1_MASK    0x000000001ffffffe
+#define R28_SHIFT_LEFT2_MASK    0x000000003ffffffc
+#define L28_LSB1_MASK           0x0000000010000000
+#define R28_LSB1_MASK           0x0000000000000001
+#define L28_LSB2_MASK           0x0000000030000000
+#define R28_LSB2_MASK           0x0000000000000003
 
 /* Initial Permutation Table */
 static int IP_TABLE[] = {
@@ -190,11 +190,11 @@ uint64_t InversePermutation(const uint64_t pre_output) {
 /**
  * @brief Takes a char array of MAX LENGTH 8 and packs it inside
  * a 64-bit integer.
- * @param plaintext char pointer to the first letter in the array
+ * @param text char pointer to the first letter in the array
  * @return 64-bit unsigned integer
  */
-uint64_t TextTo64Bit(const char *plaintext){
-    const int length = strlen(plaintext);
+uint64_t TextTo64Bit(const char *text){
+    const int length = strlen(text);
     if(length > MAX_PLAINTEXT_SIZE) {
         perror("Can't fit text into 64 bits");
         return -1;
@@ -203,45 +203,45 @@ uint64_t TextTo64Bit(const char *plaintext){
     for (int i = 0; i < length; i++) {
         //printf("Letter %c equals in hex %x\n", plaintext[i], plaintext[i]);
        // printf("b64: %llx\n", b64);
-        b64 |= (uint64_t)plaintext[i] << (length* ((length - 1) - i));
+        b64 |= (uint64_t)text[i] << (length* ((length - 1) - i));
     }
     return b64;
 }
 
 /**
  *
- * @param R
+ * @param R32
  * @return
  */
-uint64_t Expansion(const uint64_t R) {
-    uint64_t b48 = 0;
+uint64_t Expansion(const uint64_t R32) {
+    uint64_t R48 = 0;
     for (int i = 0; i < EXPANSION_SIZE; i++) {
         const int bit_pos = E[i];  // Get the bit position from the expansion table
-        const uint64_t bit = (R >> (32 - bit_pos)) & 1;  // Extract the bit from R
-        b48 |= bit << (EXPANSION_SIZE - 1 - i);  // Place the bit in the correct position in b48
+        const uint64_t bit = (R32 >> (32 - bit_pos)) & 1;  // Extract the bit from R
+        R48 |= bit << (EXPANSION_SIZE - 1 - i);  // Place the bit in the correct position in b48
     }
-    return b48;
+    return R48;
 }
 
 
 uint64_t PermutedChoice1(const uint64_t K64) {
-    uint64_t b56 = 0x0000000000000000;
+    uint64_t K56 = 0x0000000000000000;
     for(int i = 0; i < DES_PC1_SIZE; i++) {
         const int bit_pos = PC1[i];
         const uint64_t bit = (K64 >> (DES_KEY_SIZE - bit_pos)) & 1;
-        b56 |= bit << (DES_PC1_SIZE - i - 1);
+        K56 |= bit << (DES_PC1_SIZE - i - 1);
     }
-    return b56;
+    return K56;
 }
 
 uint64_t PermutedChoice2(const uint64_t K56) {
-    uint64_t b48 = 0x0000000000000000;
+    uint64_t K48 = 0x0000000000000000;
     for(int i = 0; i < DES_PC2_SIZE; i++) {
         const int bit_pos = PC2[i];
         const uint64_t bit = (K56 >> (DES_PC1_SIZE - bit_pos)) & 1;
-        b48 |= bit << (DES_PC2_SIZE - i - 1);
+        K48 |= bit << (DES_PC2_SIZE - i - 1);
     }
-    return b48;
+    return K48;
 }
 
 uint64_t LeftCircularShift(const uint64_t K56, const int round) {
@@ -259,7 +259,7 @@ uint64_t LeftCircularShift(const uint64_t K56, const int round) {
     if(shifts == 1) {
         // the LSB behavior on a left shift is undefined
         // mask it out
-        R28 &= R28_SHIFT1_MASK;
+        R28 &= R28_SHIFT_LEFT1_MASK;
 
         // put the overflowing bit in the LSB position
         L28 |= (L28 >> 28) & L28_LSB1_MASK;
@@ -267,7 +267,7 @@ uint64_t LeftCircularShift(const uint64_t K56, const int round) {
 
     }else {
         // mask it out
-        R28 &= R28_SHIFT2_MASK;
+        R28 &= R28_SHIFT_LEFT2_MASK;
 
         // put the overflowing bit duo last
         L28 |= (L28 >> 28) & L28_LSB2_MASK;
@@ -284,12 +284,32 @@ uint64_t LeftCircularShift(const uint64_t K56, const int round) {
 
 }
 
-uint64_t SBoxSubstitution(const uint64_t B48) {
+uint64_t RightCircularShift(const uint64_t K56, const int round) {
+    // Split the 56-bit key into two 28-bit halves
+    uint64_t L28 = K56 & L56_MASK;
+    uint64_t R28 = K56 & R56_MASK;
+
+    // how many shifts?
+    const int shifts = shift_round[round];
+
+    // Right circular shift
+    L28 = (L28 >> shifts) | ((L28 << (28 - shifts)) & L56_MASK);
+    R28 = (R28 >> shifts) | ((R28 << (28 - shifts)) & R56_MASK);
+
+    // Mask to ensure we only have 28 bits in each half
+    L28 &= L56_MASK;
+    R28 &= R56_MASK;
+
+    // combine the halves
+    return L28 | R28;
+}
+
+uint64_t SBoxSubstitution(const uint64_t R48) {
     uint64_t b32 = 0x00000000;
 
     for (int i = 0; i < S_BOXES; ++i) {
         // extract 6 bits for the current block
-        const uint8_t six_bits = (B48 >> (42 - 6 * i)) & 0x3F; // Mask to get 6 bits
+        const uint8_t six_bits = (R48 >> (42 - 6 * i)) & 0x3F; // Mask to get 6 bits
 
         // calculate the row: first and last bits of the 6-bit block
         const uint8_t row = ((six_bits & 0x20) >> 4) | (six_bits & 0x01);
@@ -320,20 +340,20 @@ uint64_t Permutation(const uint64_t R32) {
     return b32;
 }
 
-uint64_t F(const uint64_t R, const uint64_t K){
+uint64_t F(uint64_t R32, const uint64_t K){
     // Step 1: Expansion permutation from 32 bits to 48 bits
-    uint64_t b48 = Expansion(R);
+    uint64_t R48 = Expansion(R32);
 
     // Step 2: bitwise XOR with permuted and shifted Key
-    b48 = b48 ^ K;
+    R48 = R48 ^ K;
 
     // Step 3: Substitution box
-    uint64_t b32 = SBoxSubstitution(b48);
+    R32 = SBoxSubstitution(R48);
 
     // Step 4: Permutation
-    b32 = Permutation(b32);
+    R32 = Permutation(R32);
 
-    return b32;
+    return R32;
 }
 
 uint64_t DESEncrypt(const uint64_t plaintext, const uint64_t key) {
@@ -374,6 +394,50 @@ uint64_t DESEncrypt(const uint64_t plaintext, const uint64_t key) {
     // the ciphertext
     return InversePermutation(L32 | R32);
 
+}
+
+uint64_t DESDecrypt(const uint64_t ciphertext, const uint64_t key) {
+    // Initial Permutation
+    const uint64_t permuted_input = InitialPermutation(ciphertext);
+
+    // Split in half
+    uint64_t L32 = permuted_input & L64_MASK;
+    uint64_t R32 = permuted_input & R64_MASK;
+
+    // Permute 64-bit key
+    uint64_t K56 = PermutedChoice1(key);
+
+    for (int r = 0; r < DES_ROUNDS; r++) {
+        K56 = LeftCircularShift(K56, r);
+    }
+
+
+    for (int R = DES_ROUNDS - 1; R >= 0; R--) {  // go in reverse
+
+        //permute and reduce key to 48 bits
+        const uint64_t K48 = PermutedChoice2(K56);
+
+        printf("Round %d: L32: 0x%llx, R32: 0x%llx, K48: 0x%llx\n", R + 1, L32, R32, K48);
+
+        // Save it for now
+        const uint64_t temp = R32;
+
+        // Function F and bitwise XOR the output with the left
+        R32 = F(R32, K48) ^ (L32 >> 32);
+
+        L32 = (temp << 32) & L64_MASK; // Get the original R32
+
+        K56 = RightCircularShift(K56, R);
+
+    }
+
+    // Swap the sides
+    const uint64_t temp = L32;
+    L32 = (R32 << 32) & L64_MASK;
+    R32 = (temp >> 32) & R64_MASK;
+
+    // The plaintext
+    return InversePermutation(L32 | R32);
 }
 
 
