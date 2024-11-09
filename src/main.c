@@ -55,8 +55,10 @@ int main(const int argc, char *argv[]) {
     // Encrypt if plaintext is provided, decrypt if ciphertext is provided
     if (plaintext != NULL) {
         printf("Encrypting plaintext (M): %s\n", plaintext);
-        char *E1 = plaintext;
+        char *E1 = RotorEncrypt(plaintext, rotor_conf);
         printf("E1: %s\n", E1);
+        E1 = RotorDecrypt(E1, rotor_conf);
+        printf("E1 Decrypted: %s\n", E1);
 
         // DES works with blocks of bits
         const uint64_t key_64b = TextTo64Bit(key);
