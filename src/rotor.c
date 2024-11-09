@@ -1,7 +1,4 @@
-//
-// Created by evalentin on 10/26/24.
-//
-#include <stdio.h>
+#include "rotor.h"
 #include <string.h>
 
 #define ROTOR_COUNT 3
@@ -14,7 +11,7 @@ char rotors[ROTOR_COUNT][ALPHABET_SIZE] = {
 };
 
 // Function to rotate a character
-char rotate_char(char ch, int shift) {
+char rotate_char(const char ch, const int shift) {
     if (ch >= 'A' && ch <= 'Z') {
         return 'A' + (ch - 'A' + shift) % ALPHABET_SIZE;
     }
@@ -22,7 +19,7 @@ char rotate_char(char ch, int shift) {
 }
 
 // Function to find the substitution character based on rotor
-char substitute_char(char ch, int rotor_index, int forward) {
+char substitute_char(const char ch, const int rotor_index, const int forward) {
     if (forward) {
         return rotors[rotor_index][ch - 'A'];
     } else {
@@ -47,53 +44,28 @@ void rotate_rotors(int *rotor_positions) {
 }
 
 // Function to encrypt a message using the rotor machine
-void encrypt(char *message, char *encrypted, int *rotor_positions) {
-    strcpy(encrypted, message);
-    for (int i = 0; i < strlen(message); i++) {
-        if (encrypted[i] >= 'A' && encrypted[i] <= 'Z') {
+char *RotorEncrypt(char *plaintext, int *rotor_positions) {
+    for (int i = 0; i < strlen(plaintext); i++) {
+        if (plaintext[i] >= 'A' && plaintext[i] <= 'Z') {
             for (int j = 0; j < ROTOR_COUNT; j++) {
-                encrypted[i] = substitute_char(encrypted[i], j, 1);
+                plaintext[i] = substitute_char(plaintext[i], j, 1);
             }
             rotate_rotors(rotor_positions);
         }
     }
+    return plaintext;
 }
 
 // Function to decrypt a message using the rotor machine
-void decrypt(char *encrypted, char *decrypted, int *rotor_positions) {
-    strcpy(decrypted, encrypted);
-    for (int i = 0; i < strlen(encrypted); i++) {
-        if (decrypted[i] >= 'A' && decrypted[i] <= 'Z') {
+char *RotorDecrypt(char *ciphertext, int *rotor_positions) {
+    for (int i = 0; i < strlen(ciphertext); i++) {
+        if (ciphertext[i] >= 'A' && ciphertext[i] <= 'Z') {
             for (int j = ROTOR_COUNT - 1; j >= 0; j--) {
-                decrypted[i] = substitute_char(decrypted[i], j, 0);
+                ciphertext[i] = substitute_char(ciphertext[i], j, 0);
             }
             rotate_rotors(rotor_positions);
         }
     }
+    return ciphertext;
 }
 
-int main() {
-    char message[100], encrypted[100], decrypted[100];
-    int rotor_positions[ROTOR_COUNT] = {0, 0, 0};
-    int choice;
-
-    printf("Enter the text to be encrypted or decrypted (uppercase letters only): ");
-    fgets(message, sizeof(message), stdin);
-    message[strcspn(message, "\n")] = '\0';
-
-    printf("Choose an option:\n1. Encrypt\n2. Decrypt\n");
-    scanf("%d", &choice);
-    getchar(); 
-
-    if (choice == 1) {
-        encrypt(message, encrypted, rotor_positions);
-        printf("Encrypted Text: %s\n", encrypted);
-    } else if (choice == 2) {
-        decrypt(message, decrypted, rotor_positions);
-        printf("Decrypted Text: %s\n", decrypted);
-    } else {
-        printf("Invalid choice. Please enter 1 for encryption or 2 for decryption.\n");
-    }
-
-    return 0;
-}

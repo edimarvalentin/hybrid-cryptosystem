@@ -6,7 +6,6 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <sys/types.h>
 
 #define DES_KEY_SIZE            64
 #define DES_BLOCK_SIZE          64
@@ -14,7 +13,6 @@
 #define DES_PC1_SIZE            56
 #define DES_PC2_SIZE            48
 #define PERMUTATION_SIZE        32
-#define MAX_PLAINTEXT_SIZE      8
 #define EXPANSION_SIZE          48
 #define S_BOXES                 8
 #define L64_MASK                0xffffffff00000000
@@ -193,19 +191,25 @@ uint64_t InversePermutation(const uint64_t pre_output) {
  * @param text char pointer to the first letter in the array
  * @return 64-bit unsigned integer
  */
-uint64_t TextTo64Bit(const char *text){
+uint64_t TextTo64Bit(const char *text) {
     const int length = strlen(text);
-    if(length > MAX_PLAINTEXT_SIZE) {
+    if (length > MAX_PLAINTEXT_SIZE) {
         perror("Can't fit text into 64 bits");
         return -1;
     }
     uint64_t b64 = 0x0000000000000000;
+
     for (int i = 0; i < length; i++) {
-        //printf("Letter %c equals in hex %x\n", plaintext[i], plaintext[i]);
-       // printf("b64: %llx\n", b64);
-        b64 |= (uint64_t)text[i] << (length* ((length - 1) - i));
+        b64 |= (uint64_t)(text[i] & 0xFF) << ((7 - i) * 8);  // Shift each byte by multiples of 8
     }
     return b64;
+}
+
+char* Bit64ToText(const uint64_t b64, char *text) {
+    for (int i = 0; i < 8; i++) {
+        text[7 - i] = (char)((b64 >> (i * 8)) & 0xFF); // Extract each byte and store in reverse order
+    }
+    return text;
 }
 
 /**
@@ -383,7 +387,6 @@ uint64_t DESEncrypt(const uint64_t plaintext, const uint64_t key) {
         R32 = F(R32, K48) ^ (L32 >> 32);
 
         L32 = (temp << 32) & L64_MASK; // Get the original R32
-        printf("Round %d: L32: 0x%llx, R32: 0x%llx, K48: 0x%llx\n", R + 1, L32, R32, K48);
     }
 
     // Swap the sides
@@ -416,8 +419,6 @@ uint64_t DESDecrypt(const uint64_t ciphertext, const uint64_t key) {
 
         //permute and reduce key to 48 bits
         const uint64_t K48 = PermutedChoice2(K56);
-
-        printf("Round %d: L32: 0x%llx, R32: 0x%llx, K48: 0x%llx\n", R + 1, L32, R32, K48);
 
         // Save it for now
         const uint64_t temp = R32;
