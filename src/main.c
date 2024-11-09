@@ -9,11 +9,11 @@
 int main(const int argc, char *argv[]) {
     char *plaintext = NULL;
     char *ciphertext = NULL;
-    int rotor_conf[] = {0, 0, 0}; // Assuming an array for rotor configuration
+    int rotor_conf[] = {0, 0, 0};
     const char *key = NULL;
     int option;
 
-    // Parse command-line arguments
+    // parse command-line arguments
     while ((option = getopt(argc, argv, "p:c:r:k:")) != -1) {
         switch (option) {
             case 'p':
@@ -55,10 +55,10 @@ int main(const int argc, char *argv[]) {
     // Encrypt if plaintext is provided, decrypt if ciphertext is provided
     if (plaintext != NULL) {
         printf("Encrypting plaintext (M): %s\n", plaintext);
+
         char *E1 = RotorEncrypt(plaintext, rotor_conf);
+
         printf("E1: %s\n", E1);
-        E1 = RotorDecrypt(E1, rotor_conf);
-        printf("E1 Decrypted: %s\n", E1);
 
         // DES works with blocks of bits
         const uint64_t key_64b = TextTo64Bit(key);
@@ -67,6 +67,7 @@ int main(const int argc, char *argv[]) {
         const int blocks = (strlen(E1) + MAX_PLAINTEXT_SIZE) / MAX_PLAINTEXT_SIZE;
         uint64_t ciphers[blocks];
 
+        printf("E2:");
         // Encrypt
         for (int i = 0; i < blocks; i++) {
 
@@ -74,61 +75,44 @@ int main(const int argc, char *argv[]) {
             char block[MAX_PLAINTEXT_SIZE + 1] = {0};
             strncpy(block, E1 + i * MAX_PLAINTEXT_SIZE, MAX_PLAINTEXT_SIZE);
 
-            printf("Block: %s\n", block);
-
             // Convert the block to 64-bit integer
             uint64_t block_64b = TextTo64Bit(block);
-            printf("Block_64b: %llx\n", block_64b);
 
             // Encrypt the block with DES
             ciphers[i] = DESEncrypt(block_64b, key_64b);
 
-            char E2[] = "ABCDEFGH\0";
-
-            Bit64ToText(ciphers[i], E2);
-
-            const uint64_t plaintext_block = DESDecrypt(ciphers[i], key_64b);
-
-            char M[] = "ABCDEFGH\0";
-
-            Bit64ToText(plaintext_block, M);
-
-            printf("Cipher block %d (hex): %llx | %s\n", i, ciphers[i], E2);
-            printf("Plaintext block %d (hex): %llx| %s\n",i, plaintext_block, M);
-
+            printf("%llx", ciphers[i]);
 
         }
+
+        printf("\n");
 
     } else if (ciphertext != NULL) {
-        printf("Decrypting ciphertext (D2): %s\n", ciphertext);
-        char* D2 = ciphertext;
-        const int key_64b = TextTo64Bit(key);
+        printf("Decrypting ciphertext (E2): 0x%s\n", ciphertext);
 
-        // Calculate the number of 64 bits in D2
-        const int blocks = (strlen(D2) + MAX_PLAINTEXT_SIZE - 1) / MAX_PLAINTEXT_SIZE;
-        uint64_t ciphers[blocks];
+        uint64_t *ciphers;
+        const size_t blocks = HexStringTo64BitBlocks(ciphertext, &ciphers);
+        const uint64_t key_64b = TextTo64Bit(key);
 
         // Decrypt
+        printf("D1: 0x");
+
         for (int i = 0; i < blocks; i++) {
 
-            //get 8 chars, and add 0s for padding
-            char block[MAX_PLAINTEXT_SIZE + 1] = {0};
+            // decrypt the block with DES
+            ciphers[i] = DESDecrypt(ciphers[i], key_64b);
 
-            strncpy(block, D2 + i * MAX_PLAINTEXT_SIZE, MAX_PLAINTEXT_SIZE);
-
-            // Convert the block to 64-bit integer
-            uint64_t block_64b = TextTo64Bit(block);
-
-            // Encrypt the block with DES
-            ciphers[i] = DESDecrypt(block_64b, key_64b);
-
-            char E2[] = "ABCDEFGH";
-
-            Bit64ToText(ciphers[i], E2);
-
-            printf("Cipher block %d (hex): %llx | %s\n", i, ciphers[i], E2);
+            printf("%llx", ciphers[i]);
         }
 
+        printf("\nD2: ");
+        for (int j = 0; j < blocks; j++) {
+            char* d1 = Bit64ToText(ciphers[j]);
+            d1 = RotorDecrypt(d1, rotor_conf);
+            printf("%s", d1);
+            free(d1); //lets not get memory leaks :)
+        }
+        printf("\n");
 
     }
 
