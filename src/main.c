@@ -67,7 +67,7 @@ int main(const int argc, char *argv[]) {
         const int blocks = (strlen(E1) + MAX_PLAINTEXT_SIZE) / MAX_PLAINTEXT_SIZE;
         uint64_t ciphers[blocks];
 
-        printf("E2:");
+        printf("E2: 0x");
         // Encrypt
         for (int i = 0; i < blocks; i++) {
 
